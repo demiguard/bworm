@@ -21,14 +21,14 @@ Okay cool, but lets check the tables in the database:
 
 ```python
 >>>dir(cookie_dough_recipes)
-[]
+['__doc__', '__loader__', '__name__', '__package__', '__spec__']
 ```
 
 Well that's not every surprising - I mean we just created the database - lets add a table
 
 ```python
 from dataclases import make_dataclass
-cookie_dough_recipes.Ingredient = make_dataclass("Ingredient", [("grams", int), ("name", str)]) 
+cookie_dough_recipes.Ingredient = make_dataclass("Ingredient", [("grams", int), ("name", str)])
 ```
 
 ## Why is this a terrible idea
