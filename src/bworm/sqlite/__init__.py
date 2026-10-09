@@ -1,4 +1,4 @@
-from dataclasses import make_dataclass, is_dataclass, fields, Field
+from dataclasses import make_dataclass, is_dataclass, fields, Field, dataclass
 import sys
 from importlib.abc import Loader, MetaPathFinder
 from importlib.machinery import ModuleSpec
@@ -24,6 +24,24 @@ SHOW_TABLE_QUERY = """
     name NOT LIKE 'sqlite_%';
 """
 
+class BwormDataclass:
+  _connection: sqlite3.Connection
+
+  @classmethod
+  def select(cls):
+    return [cls(*res) for res in cls._connection.execute(f"SELECT * FROM {cls.__name__}")]
+
+  def save(self):
+    field_names = []
+    field_values = []
+
+    for field in fields(self): #type: ignore
+      field_names.append(field.name)
+      field_values.append(core.escape(self.__getattribute__(field.name)))
+
+    self._connection.execute(f"INSERT INTO {self.__class__.__name__}({', '.join(field_names)}) VALUES ({', '.join(field_values)})")
+    self._connection.commit()
+
 def map_from_sqlite_type(typename: str) -> Type:
   match typename:
     case "TEXT":
@@ -40,7 +58,6 @@ def map_to_sqlite_type(type_: type | str) -> str:
 
   raise Exception("Unknown Type!")
 
-
 def describe_table_query(table_name:str):
   return f"""PRAGMA table_info({table_name})"""
 
@@ -54,7 +71,7 @@ def read_table_from(conn: sqlite3.Connection, table_name: str):
   fields = [extract_type(res) for res in conn.execute(describe_table_query(table_name))]
 
   return make_dataclass(
-    table_name, fields
+    table_name, fields, bases=(BwormDataclass,), namespace={'_connection' : conn}
   )
 
 def create_table_query(dataclass_type: Type):
@@ -64,7 +81,6 @@ CREATE TABLE IF NOT EXISTS {dataclass_type.__name__}(
   {',\n'.join([map_field_to_sqlite(field) for field in fields(dataclass_type)])}
 )"""
 )
-
 
 class DatabaseModuleType(ModuleType):
   def __setattr__(self, name: str, value: Any) -> None:
