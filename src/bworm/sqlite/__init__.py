@@ -94,6 +94,16 @@ class DatabaseModuleType(ModuleType):
     if not isinstance(value, type):
       raise TypeError(f"Value is an instance of a dataclass, not the type!")
 
+    if not issubclass(value, BwormDataclass):
+      value = make_dataclass(
+        value.__name__,
+        [(f.name, f.type) for f in fields(value)],
+        bases=(BwormDataclass,),
+        namespace={"_connection" : self.__connection}
+      )
+    else:
+      value._connection = self.__connection
+
     self.__connection.execute(create_table_query(value))
 
     return super().__setattr__(name, value)
